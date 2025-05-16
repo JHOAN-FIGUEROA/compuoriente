@@ -26,6 +26,7 @@ function Usuarios() {
             <strong>Email:</strong> {usuario.email} <br />
             <strong>Estado:</strong> {usuario.estado ? 'Activo' : 'Inactivo'} <br />
             <strong>Rol:</strong> {usuario.rol?.nombre || 'Sin rol'}
+             <strong>Rol:</strong> {usuario.rol?.nombre || 'con rol'}
           </li>
         ))}
       </ul>
