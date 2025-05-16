@@ -1,0 +1,140 @@
+/* Estilos generales */
+* {
+  box-sizing: border-box;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Contenedor principal para centrar */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(-45deg, #00b4d8, #fffde7, #b5ead7, #e0f7fa);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+/* Contenedor del login */
+.login-container {
+  position: relative;
+  background-color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  width: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Logo */
+.login-logo {
+  width: 150px;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto 1.5rem auto;
+  animation: fadeIn 1s ease-in-out;
+  transform: translateX(-10px);
+}
+
+/* Luz giratoria */
+.login-container::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffea00, #00ff88);
+  box-shadow: 0 0 10px 4px rgba(255, 255, 0, 0.6);
+  animation: borderOrbit 4s linear infinite;
+}
+
+/* Animación de luz */
+@keyframes borderOrbit {
+  0% {
+    top: 0;
+    left: 0;
+  }
+  25% {
+    top: 0;
+    left: 100%;
+    transform: translateX(-100%);
+  }
+  50% {
+    top: 100%;
+    left: 100%;
+    transform: translate(-100%, -100%);
+  }
+  75% {
+    top: 100%;
+    left: 0;
+    transform: translateY(-100%);
+  }
+  100% {
+    top: 0;
+    left: 0;
+  }
+}
+
+/* Animación del logo */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Texto */
+.login-container h2 {
+  margin-bottom: 1.5rem;
+  color: #0077b6;
+}
+
+/* Inputs */
+.login-container input {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border: 2px solid #caf0f8;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border 0.3s ease;
+}
+
+.login-container input:focus {
+  border-color: #90e0ef;
+  outline: none;
+}
+
+/* Botón */
+.login-container button {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 1rem;
+  background-color: #00b4d8;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-container button:hover {
+  background-color: #0096c7;
+}
+
+/* Mensaje de error */
+.login-container p {
+  color: #ff6b6b;
+  margin-top: 1rem;
+  font-weight: bold;
+}
