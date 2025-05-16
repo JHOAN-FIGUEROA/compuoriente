@@ -294,38 +294,42 @@ const RolesList = () => {
             </tr>
           ) : (
             roles.map((rol) => (
-              <tr key={rol.id}>
-                <td>{rol.id}</td>
-                <td>{rol.nombre}</td>
-                <td>
-                  <Form.Check
-                    type="switch"
-                    id={`switch-${rol.id}`}
-                    checked={Boolean(rol.estado)}
-                    onChange={() => handleToggleEstado(rol.id, rol.estado)}
-                  />
-                </td>
-                <td>
-                  <button
-                    className="btn btn-info btn-sm me-2"
-                    onClick={() => handleVerDetalle(rol.id)}
-                  >
-                    Ver detalle
-                  </button>
-                  <button
-                    className="btn btn-warning btn-sm me-2"
-                    onClick={() => abrirModalEditar(rol)}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleEliminar(rol.id)}
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
+            <tr key={rol.id}>
+            <td>{rol.id}</td>
+            <td>{rol.nombre}</td>
+             <td>
+      <Form.Check
+        type="switch"
+        id={`switch-${rol.id}`}
+        checked={Boolean(rol.estado)}
+        onChange={() => handleToggleEstado(rol.id, rol.estado)}
+      />
+    </td>
+    <td>
+      <button
+        className="btn btn-info btn-sm me-2"
+        onClick={() => handleVerDetalle(rol.id)}
+      >
+        Ver detalle
+      </button>
+      <button
+        className="btn btn-warning btn-sm me-2"
+        onClick={() => abrirModalEditar(rol)}
+      >
+        Editar
+      </button>
+      
+      {/* Solo mostrar eliminar si el rol NO es el id 1 */}
+      {rol.id !== 1 && (
+        <button
+          className="btn btn-danger btn-sm"
+          onClick={() => handleEliminar(rol.id)}
+        >
+          Eliminar
+        </button>
+      )}
+    </td>
+    </tr>
             ))
           )}
         </tbody>
