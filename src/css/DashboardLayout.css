@@ -53,3 +53,62 @@
   margin-left: 0;
   width: 100%;
 }
+
+/* Header institucional superior */
+.header-institucional {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4.5rem;
+  background: #023e8a; /* Unificado con el sidebar */
+  color: white;
+  z-index: 1200;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  margin-left: 240px; /* Alinea el header después del sidebar */
+}
+
+.header-content {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 2rem;
+  height: 100%;
+}
+
+.header-institucional button, .header-institucional .btn {
+  font-size: 1.1rem;
+  padding: 0.6rem 1.5rem;
+  border-radius: 0.7rem;
+  background: #023e8a;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  transition: background 0.2s;
+}
+
+.header-institucional button:hover, .header-institucional .btn:hover {
+  background: #0077b6;
+  color: #fff;
+}
+
+.saludo-usuario {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-right: auto;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+
+.institucional-container, .container-fluid {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}

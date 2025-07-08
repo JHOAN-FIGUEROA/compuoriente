@@ -1,14 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { cerrarSesion } from '../utils/auth';
 
-function NavBar() {
-  const navigate = useNavigate();
-
+function NavBar({ cerrarSesion }) {
+  const handleCerrarSesion = () => {
+    cerrarSesion();
+  };
   return (
-    <nav>
-      <button onClick={() => cerrarSesion(navigate)}>Cerrar sesión</button>
-    </nav>
+    <button
+      className="btn d-flex align-items-center"
+      style={{ fontWeight: 600, fontSize: '1.1rem', gap: '0.5rem', background: '#ff5c5c', color: '#fff', border: 'none' }}
+      onClick={handleCerrarSesion}
+    >
+      <i className="fas fa-sign-out-alt"></i>
+      Cerrar sesión
+    </button>
   );
 }
 

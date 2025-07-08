@@ -36,11 +36,13 @@ const RolesList = () => {
         ? await buscarRoles(busqueda, pagina)
         : await obtenerRoles(pagina);
 
-      setRoles(data.roles);
-      setTotal(data.total);
-      setTotalPaginas(data.totalPaginas);
+      const rolesData = data.data || {};
+      setRoles(Array.isArray(rolesData.roles) ? rolesData.roles : []);
+      setTotal(rolesData.total || 0);
+      setTotalPaginas(rolesData.totalPaginas || 1);
     } catch (error) {
       console.error('Error al cargar roles:', error);
+      setRoles([]);
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ const RolesList = () => {
         Swal.fire('Eliminado', 'Rol eliminado con éxito', 'success');
         cargarRoles();
       } catch (error) {
-        Swal.fire('Error', error.message || 'No se pudo eliminar el rol', 'error');
+        Swal.fire('Error', getErrorMessage(error), 'error');
       }
     }
   };
@@ -170,32 +172,18 @@ const RolesList = () => {
   const abrirModalEditar = async (rol) => {
     try {
       const detalle = await obtenerDetalleRol(rol.id);
-      console.log('Detalle completo del rol:', JSON.stringify(detalle, null, 2));
       setRolSeleccionado(rol);
-      setNombreRol(rol.nombre);
-      
-      // Inicializar con array vacío
-      setPermisosSeleccionados([]);
-      
-      // Si hay permisos válidos, procesarlos
-      if (detalle.permisos && Array.isArray(detalle.permisos)) {
-        console.log('Permisos recibidos:', detalle.permisos);
-        
-        // Filtrar los permisos nulos y extraer solo los IDs válidos
-        const permisosValidos = detalle.permisos
-          .filter(p => {
-            console.log('Procesando permiso:', p);
-            return p !== null && p !== undefined && typeof p === 'object' && p.id;
-          })
-          .map(p => {
-            console.log('Mapeando permiso:', p);
-            return Number(p.id);
-          });
-        
-        console.log('Permisos válidos encontrados:', permisosValidos);
-        setPermisosSeleccionados(permisosValidos);
+      setNombreRol(detalle.data.nombre);
+
+      // Manejo robusto de permisos
+      let permisosValidos = [];
+      if (Array.isArray(detalle.data.permisos)) {
+        permisosValidos = detalle.data.permisos
+          .map(p => (typeof p === 'object' && p !== null ? p.id : p))
+          .filter(id => id !== null && id !== undefined && !isNaN(id));
       }
-      
+      setPermisosSeleccionados(permisosValidos);
+
       setMostrarModal(true);
     } catch (error) {
       console.error('Error al cargar detalle del rol:', error);
@@ -222,7 +210,7 @@ const RolesList = () => {
         Swal.fire('Error', 'Debe seleccionar al menos un permiso', 'error');
         return;
       }
-      
+      let response;
       if (rolSeleccionado) {
         // Para editar, enviamos permisos (como espera el backend)
         const datosEdicion = {
@@ -230,8 +218,7 @@ const RolesList = () => {
           permisos: permisosValidos
         };
         console.log('Datos completos para edición:', JSON.stringify(datosEdicion, null, 2));
-        await editarRol(rolSeleccionado.id, datosEdicion);
-        Swal.fire('Actualizado', 'Rol editado correctamente', 'success');
+        response = await editarRol(rolSeleccionado.id, datosEdicion);
       } else {
         // Para crear, enviamos permisos_ids (como espera el backend)
         const datosCreacion = {
@@ -239,202 +226,271 @@ const RolesList = () => {
           permisos_ids: permisosValidos
         };
         console.log('Datos completos para creación:', JSON.stringify(datosCreacion, null, 2));
-        await crearRol(datosCreacion);
-        Swal.fire('Creado', 'Rol creado correctamente', 'success');
+        response = await crearRol(datosCreacion);
       }
-
+      // Manejo de respuesta del backend
+      if (response && response.ok === false) {
+        Swal.fire('Error', response.message || 'Ocurrió un error', 'error');
+        return;
+      }
+      Swal.fire(rolSeleccionado ? 'Actualizado' : 'Creado', rolSeleccionado ? 'Rol editado correctamente' : 'Rol creado correctamente', 'success');
       setMostrarModal(false);
       cargarRoles();
     } catch (error) {
       console.error('Error al guardar:', error);
-      Swal.fire('Error', error.message || 'Error al guardar el rol', 'error');
+      Swal.fire('Error', getErrorMessage(error), 'error');
     }
   };
 
+  // Utilidad para extraer el mensaje del backend
+  function getErrorMessage(error) {
+    return error?.response?.data?.message || error?.message || 'Ocurrió un error';
+  }
+
   return (
-    <div className="container mt-4">
-      <h2>Lista de Roles</h2>
-
-      <form className="mb-3 d-flex" onSubmit={handleBuscar}>
-        <input
-          type="text"
-          placeholder="Buscar por nombre..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="form-control me-2"
-        />
-        <button className="btn btn-primary" type="submit">
-          Buscar
-        </button>
-      </form>
-
-      <div className="mb-3">
-        <button className="btn btn-success" onClick={abrirModalCrear}>
-          + Crear nuevo rol
-        </button>
-      </div>
-
-      <table className="table table-bordered">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr>
-              <td colSpan="4">Cargando...</td>
-            </tr>
-          ) : roles.length === 0 ? (
-            <tr>
-              <td colSpan="4">No se encontraron roles</td>
-            </tr>
-          ) : (
-            roles.map((rol) => (
-            <tr key={rol.id}>
-            <td>{rol.id}</td>
-            <td>{rol.nombre}</td>
-             <td>
-      <Form.Check
-        type="switch"
-        id={`switch-${rol.id}`}
-        checked={Boolean(rol.estado)}
-        onChange={() => handleToggleEstado(rol.id, rol.estado)}
-      />
-    </td>
-    <td>
-      <button
-        className="btn btn-info btn-sm me-2"
-        onClick={() => handleVerDetalle(rol.id)}
-      >
-        Ver detalle
-      </button>
-      <button
-        className="btn btn-warning btn-sm me-2"
-        onClick={() => abrirModalEditar(rol)}
-      >
-        Editar
-      </button>
-      
-      {/* Solo mostrar eliminar si el rol NO es el id 1 */}
-      {rol.id !== 1 && (
-        <button
-          className="btn btn-danger btn-sm"
-          onClick={() => handleEliminar(rol.id)}
-        >
-          Eliminar
-        </button>
-      )}
-    </td>
-    </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-      <div className="d-flex justify-content-between align-items-center">
-        <span>Total: {total}</span>
-        <div>
-          <button
-            className="btn btn-outline-secondary me-2"
-            onClick={() => setPagina((p) => Math.max(p - 1, 1))}
-            disabled={pagina === 1}
-          >
-            Anterior
-          </button>
-          <span>Página {pagina} de {totalPaginas}</span>
-          <button
-            className="btn btn-outline-secondary ms-2"
-            onClick={() => setPagina((p) => Math.min(p + 1, totalPaginas))}
-            disabled={pagina === totalPaginas}
-          >
-            Siguiente
-          </button>
-        </div>
-      </div>
-
-      {/* Modal Crear/Editar */}
-      <Modal show={mostrarModal} onHide={() => setMostrarModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{rolSeleccionado ? 'Editar Rol' : 'Crear Rol'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {loadingDetalle ? (
-            <div className="text-center">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-              <p className="mt-2">Cargando permisos...</p>
+    <div className="institucional-container" style={{ paddingTop: 0, marginTop: 0 }}>
+      <div className="container-fluid">
+        {/* Header */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="d-flex justify-content-between align-items-center">
+              <h2 className="mb-0">
+                <i className="fas fa-user-shield me-2"></i>
+                Gestión de Roles
+              </h2>
             </div>
-          ) : (
-            <Form>
-              <Form.Group controlId="nombreRol">
-                <Form.Label>Nombre</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={nombreRol}
-                  onChange={(e) => setNombreRol(e.target.value)}
-                />
-              </Form.Group>
-              <Form.Group controlId="selectPermiso" className="mt-3">
-                <Form.Label>Agregar Permiso</Form.Label>
-                <Form.Control
-                  as="select"
-                  onChange={handleAgregarPermiso}
-                  defaultValue=""
-                >
-                  <option value="" disabled>-- Seleccione un permiso --</option>
-                  {permisosDisponibles
-                    .filter(permiso => !permisosSeleccionados.includes(permiso.id))
-                    .map(permiso => (
-                      <option key={permiso.id} value={permiso.id}>
-                        {permiso.nombre}
-                      </option>
-                    ))
-                  }
-                </Form.Control>
-              </Form.Group>
-
-              {/* Mostrar permisos seleccionados como badges con opción para quitar */}
-              <div className="mt-3">
-                {permisosSeleccionados.length === 0 && <p>No hay permisos agregados.</p>}
-                {permisosSeleccionados.map(id => {
-                  const permiso = permisosDisponibles.find(p => p.id === id);
-                  if (!permiso) return null;
-                  return (
-                    <Badge
-                      key={id}
-                      pill
-                      bg="primary"
-                      className="me-2"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => handleQuitarPermiso(id)}
-                      title="Click para quitar permiso"
-                    >
-                      {permiso.nombre} &times;
-                    </Badge>
-                  );
-                })}
+          </div>
+        </div>
+        {/* Búsqueda y botón en la misma fila */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="d-flex align-items-center justify-content-between gap-3">
+              <div style={{ flex: 1, maxWidth: 500 }}>
+                <div className="input-group">
+                  <span className="input-group-text">
+                    <i className="fas fa-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Buscar roles..."
+                    value={busqueda}
+                    onChange={e => setBusqueda(e.target.value)}
+                  />
+                </div>
               </div>
+              <button className="btn btn-primary btn-lg" onClick={abrirModalCrear}>
+                <i className="fas fa-plus me-2"></i>
+                Nuevo Rol
+              </button>
+            </div>
+          </div>
+        </div>
+        {/* Tabla */}
+        <div className="row">
+          <div className="col-12">
+            <div className="card shadow-sm">
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th className="text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="4" className="text-center py-4 text-muted">
+                            <i className="fas fa-spinner fa-spin"></i> Cargando...
+                          </td>
+                        </tr>
+                      ) : (!roles || roles.length === 0) ? (
+                        <tr>
+                          <td colSpan="4" className="text-center py-4 text-muted">
+                            <i className="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No se encontraron roles</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        roles.map((rol) => (
+                          <tr key={rol.id}>
+                            <td>{rol.id}</td>
+                            <td>{rol.nombre}</td>
+                            <td className="text-center align-middle">
+                              <div className="d-flex justify-content-center align-items-center" style={{ height: '100%' }}>
+                                <div className="form-check form-switch m-0">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id={`switch-rol-${rol.id}`}
+                                    checked={Boolean(rol.estado)}
+                                    onChange={() => handleToggleEstado(rol.id, rol.estado)}
+                                    disabled={rol.id === 1}
+                                  />
+                                  <label className="form-check-label" htmlFor={`switch-rol-${rol.id}`}></label>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="text-center">
+                              <div className="btn-group" role="group">
+                                <button
+                                  className="btn btn-sm btn-outline-primary"
+                                  onClick={() => abrirModalEditar(rol)}
+                                  title="Editar"
+                                  data-bs-toggle="tooltip"
+                                  data-bs-placement="top"
+                                >
+                                  <i className="fas fa-pen"></i>
+                                </button>
+                                {rol.id !== 1 && (
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => handleEliminar(rol.id)}
+                                    title="Eliminar"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Paginación */}
+        {totalPaginas > 1 && (
+          <div className="row mt-4">
+            <div className="col-12">
+              <nav aria-label="Navegación de páginas">
+                <ul className="pagination justify-content-center">
+                  <li className={`page-item ${pagina === 1 ? 'disabled' : ''}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setPagina(p => Math.max(p - 1, 1))}
+                      disabled={pagina === 1}
+                    >
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+                  </li>
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((num) => (
+                    <li key={num} className={`page-item ${pagina === num ? 'active' : ''}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => setPagina(num)}
+                      >
+                        {num}
+                      </button>
+                    </li>
+                  ))}
+                  <li className={`page-item ${pagina === totalPaginas ? 'disabled' : ''}`}>
+                    <button
+                      className="page-link"
+                      onClick={() => setPagina(p => Math.min(p + 1, totalPaginas))}
+                      disabled={pagina === totalPaginas}
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          </div>
+        )}
+        {/* Modal Crear/Editar Rol */}
+        {mostrarModal && (
+          <Modal show={mostrarModal} onHide={() => setMostrarModal(false)} size="xl" centered>
+            <div style={{ background: '#0a3871', color: 'white', padding: '1.2rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="d-flex align-items-center">
+                <i className="fas fa-user-shield fa-lg me-2"></i>
+                <span style={{ fontWeight: 700, fontSize: '1.3rem', letterSpacing: '0.5px' }}>{rolSeleccionado ? 'Editar Rol' : 'Nuevo Rol'}</span>
+              </div>
+              <button type="button" className="btn-close btn-close-white" onClick={() => setMostrarModal(false)}></button>
+            </div>
+            <Form onSubmit={e => { e.preventDefault(); handleGuardar(); }}>
+              <Modal.Body style={{ paddingTop: 0 }}>
+                <div className="mb-4 mt-3">
+                  <h6 className="text-primary mb-3 d-flex align-items-center">
+                    <i className="fas fa-id-card me-2"></i>
+                    Información Básica
+                  </h6>
+                  <div className="row">
+                    <div className="col-md-12 mb-3">
+                      <Form.Label>Nombre</Form.Label>
+                      <Form.Control type="text" value={nombreRol} onChange={e => setNombreRol(e.target.value)} placeholder="Nombre del rol" size="lg" autoComplete="off" required />
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <h6 className="text-primary mb-3 d-flex align-items-center">
+                    <i className="fas fa-key me-2"></i>
+                    Permisos
+                  </h6>
+                  <div className="row">
+                    <div className="col-md-12 mb-3">
+                      <Form.Label>Agregar Permiso</Form.Label>
+                      <Form.Select onChange={handleAgregarPermiso} defaultValue="" size="lg">
+                        <option value="" disabled>-- Seleccione un permiso --</option>
+                        {permisosDisponibles.filter(permiso => !permisosSeleccionados.includes(permiso.id)).map(permiso => (
+                          <option key={permiso.id} value={permiso.id}>{permiso.nombre}</option>
+                        ))}
+                      </Form.Select>
+                    </div>
+                    <div className="col-md-12 mb-3">
+                      <Form.Label>Permisos seleccionados</Form.Label>
+                      <div>
+                        {permisosSeleccionados.length === 0 && <p className="text-muted">No hay permisos agregados.</p>}
+                        {permisosSeleccionados.map(id => {
+                          const permiso = permisosDisponibles.find(p => p.id === id);
+                          if (!permiso) return null;
+                          return (
+                            <span
+                              key={id}
+                              className="badge bg-primary me-2 mb-2"
+                              style={{ cursor: 'pointer', fontSize: '1rem', padding: '0.7em 1em' }}
+                              onClick={() => handleQuitarPermiso(id)}
+                              title="Click para quitar permiso"
+                            >
+                              {permiso.nombre} &times;
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {loadingDetalle && (
+                  <div className="text-center">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Cargando...</span>
+                    </div>
+                    <p className="mt-2">Cargando permisos...</p>
+                  </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+                <Button variant="secondary" size="lg" onClick={() => setMostrarModal(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" size="lg" type="submit" disabled={loadingDetalle}>
+                  Guardar
+                </Button>
+              </Modal.Footer>
             </Form>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setMostrarModal(false)}>
-            Cancelar
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={handleGuardar}
-            disabled={loadingDetalle}
-          >
-            Guardar
-          </Button>
-        </Modal.Footer>
-      </Modal>
+          </Modal>
+        )}
+      </div>
     </div>
   );
 };

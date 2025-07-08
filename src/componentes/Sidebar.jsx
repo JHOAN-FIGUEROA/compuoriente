@@ -47,7 +47,23 @@ function Sidebar({ visible, cerrarSesion }) {
         </li>
 
         <li>
-          <button className="sidebar-btn" onClick={cerrarSesion}>Cerrar sesión</button>
+          <button 
+            className="sidebar-link submenu-toggle" 
+            onClick={() => toggleSubmenu('Academico')}
+          >
+            Académico
+          </button>
+          {submenuOpen === 'Academico' && (
+            <ul className="submenu">
+              <li><Link to="/asistencias" className="sidebar-link">Asistencias</Link></li>
+              <li><Link to="/clases" className="sidebar-link">Clases</Link></li>
+              <li><Link to="/estudiantes" className="sidebar-link">Estudiantes</Link></li>
+              <li><Link to="/grupos" className="sidebar-link">Grupos</Link></li>
+              <li><Link to="/programas" className="sidebar-link">Programas</Link></li>
+              <li><Link to="/profesores" className="sidebar-link">Profesores</Link></li>
+              <li><Link to="/asignacion-estudiantes" className="sidebar-link">Asignación Estudiantes</Link></li>
+            </ul>
+          )}
         </li>
       </ul>
     </div>
