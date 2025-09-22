@@ -12,6 +12,7 @@ import {
 } from '../api';
 import Swal from 'sweetalert2';
 import { Form, Button, Modal } from 'react-bootstrap';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 // Utilidad para extraer el mensaje del backend
 function getErrorMessage(error) {
@@ -29,15 +30,21 @@ const Usuarios = () => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
   const [formData, setFormData] = useState({
+    tipo_documento: '',
+    documento: '',
     nombre: '',
     apellido: '',
-    documento: '',
     email: '',
     estado: true,
     rol_id: '',
   });
   const [rolesDisponibles, setRolesDisponibles] = useState([]);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+
+  // Estados para ver/ocultar contraseña y confirmar
+  const [verPass, setVerPass] = useState(false);
+  const [verConfirm, setVerConfirm] = useState(false);
+  const [confirmPass, setConfirmPass] = useState('');
 
   const cargarUsuarios = async () => {
     try {
@@ -122,13 +129,17 @@ const Usuarios = () => {
   const abrirModalCrear = () => {
     setUsuarioSeleccionado(null);
     setFormData({
+      tipo_documento: '',
+      documento: '',
       nombre: '',
       apellido: '',
-      documento: '',
       email: '',
       contraseña: '',
       rol_id: '',
     });
+    setConfirmPass(''); // Resetear confirmación de contraseña al crear
+    setVerPass(false);
+    setVerConfirm(false);
     setMostrarModal(true);
   };
 
@@ -139,13 +150,17 @@ const Usuarios = () => {
 
       setUsuarioSeleccionado(usuario);
       setFormData({
+        tipo_documento: detalle.data.tipo_documento || '',
+        documento: detalle.data.documento || '',
         nombre: detalle.data.nombre || '',
         apellido: detalle.data.apellido || '',
-        documento: detalle.data.documento || '',
         email: detalle.data.email || '',
-        
         rol_id: detalle.data.rol_id || detalle.data.rol?.id || '',
+        // Eliminar campo contraseña al editar
       });
+      setConfirmPass(''); // Resetear confirmación de contraseña al editar
+      setVerPass(false);
+      setVerConfirm(false);
       setMostrarModal(true);
     } catch (error) {
       console.error('Error al cargar detalle del usuario:', error);
@@ -166,8 +181,12 @@ const Usuarios = () => {
 const handleGuardar = async () => {
   try {
     if (!usuarioSeleccionado) {
-      // Crear usuario: campos obligatorios
-      if (!formData.nombre || !formData.apellido || !formData.documento || !formData.email || !formData.rol_id) {
+      // Validar tipo de documento explícitamente
+      if (!formData.tipo_documento) {
+        Swal.fire('Error', 'Debes seleccionar el tipo de documento', 'error');
+        return;
+      }
+      if (!formData.documento || !formData.nombre || !formData.email || !formData.rol_id) {
         Swal.fire('Error', 'Por favor completa todos los campos requeridos', 'error');
         return;
       }
@@ -175,13 +194,28 @@ const handleGuardar = async () => {
         Swal.fire('Error', 'La contraseña es obligatoria para crear un usuario', 'error');
         return;
       }
+      if (!confirmPass) {
+        Swal.fire('Error', 'La confirmación de contraseña es obligatoria', 'error');
+        return;
+      }
+      if (!passValida) {
+        Swal.fire('Error', 'La contraseña no cumple con los requisitos de seguridad.', 'error');
+        return;
+      }
+      if (!coinciden) {
+        Swal.fire('Error', 'Las contraseñas no coinciden.', 'error');
+        return;
+      }
     }
 
-    // Al editar, solo enviar la contraseña si el usuario la cambió
+    // Al editar, NO enviar la contraseña
     let datosAEnviar = { ...formData };
-    if (usuarioSeleccionado && !formData.contraseña) {
+    if (usuarioSeleccionado) {
       delete datosAEnviar.contraseña;
     }
+
+    // Imprimir los datos que se van a enviar
+    console.log('Datos a enviar:', datosAEnviar);
 
     if (usuarioSeleccionado) {
       await editarUsuario(usuarioSeleccionado.id, datosAEnviar);
@@ -209,6 +243,23 @@ const handleGuardar = async () => {
       (u.email && u.email.toLowerCase().includes(texto))
     );
   });
+
+  // Validaciones en tiempo real
+  const docValido = /^[0-9]{7,10}$/.test(formData.documento);
+  const passValida = (formData.contraseña || '').length >= 8 && /[A-Z]/.test(formData.contraseña || '') && /[a-z]/.test(formData.contraseña || '') && /[0-9]/.test(formData.contraseña || '') && /[^A-Za-z0-9]/.test(formData.contraseña || '');
+  const coinciden = (formData.contraseña || '') === confirmPass && (formData.contraseña || '').length > 0;
+  // Validación de email
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+  const nombreValido = formData.nombre.length <= 25;
+  const apellidoValido = formData.apellido.length <= 25;
+
+  // Mapeo para mostrar el nombre completo del tipo de documento
+  const tipoDocumentoNombre = {
+    CC: 'Cédula de ciudadanía',
+    TI: 'Tarjeta de identidad',
+    CE: 'Cédula de extranjería',
+    Pasaporte: 'Pasaporte',
+  };
 
 
   return (
@@ -408,20 +459,56 @@ const handleGuardar = async () => {
                   </h6>
                   <div className="row">
                     <div className="col-md-6 mb-3">
-                      <Form.Label>Nombre</Form.Label>
-                      <Form.Control type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre" size="lg" autoComplete="off" required />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                      <Form.Label>Apellido</Form.Label>
-                      <Form.Control type="text" name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido" size="lg" autoComplete="off" required />
+                      <Form.Label>Tipo de documento</Form.Label>
+                      <Form.Select
+                        name="tipo_documento"
+                        value={formData.tipo_documento}
+                        onChange={handleChange}
+                        size="lg"
+                        required
+                      >
+                        <option value="" disabled>Seleccione</option>
+                        <option value="CC">Cédula de ciudadanía</option>
+                        <option value="TI">Tarjeta de identidad</option>
+                        <option value="CE">Cédula de extranjería</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                      </Form.Select>
                     </div>
                     <div className="col-md-6 mb-3">
                       <Form.Label>Documento</Form.Label>
-                      <Form.Control type="text" name="documento" value={formData.documento} onChange={handleChange} placeholder="Documento" size="lg" autoComplete="off" required disabled={!!usuarioSeleccionado} />
+                      <Form.Control type="text" name="documento" value={formData.documento} onChange={handleChange} placeholder="Documento" size="lg" autoComplete="off" required isInvalid={formData.documento && !docValido} />
+                      {formData.documento && !docValido && (
+                        <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                          El documento debe tener entre 7 y 10 dígitos numéricos.
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <Form.Label>Nombre</Form.Label>
+                      <Form.Control type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Nombre" size="lg" autoComplete="off" required isInvalid={!nombreValido} maxLength={25} />
+                      {formData.nombre && !nombreValido && (
+                        <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                          El nombre no puede tener más de 25 caracteres.
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <Form.Label>Apellido</Form.Label>
+                      <Form.Control type="text" name="apellido" value={formData.apellido} onChange={handleChange} placeholder="Apellido" size="lg" autoComplete="off" required isInvalid={!apellidoValido} maxLength={25} />
+                      {formData.apellido && !apellidoValido && (
+                        <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                          El apellido no puede tener más de 25 caracteres.
+                        </div>
+                      )}
                     </div>
                     <div className="col-md-6 mb-3">
                       <Form.Label>Email</Form.Label>
-                      <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" size="lg" autoComplete="off" required />
+                      <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" size="lg" autoComplete="off" required isInvalid={formData.email && !emailValido} />
+                      {formData.email && !emailValido && (
+                        <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                          Ingresa un correo electrónico válido.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -431,24 +518,67 @@ const handleGuardar = async () => {
                     Seguridad y Rol
                   </h6>
                   <div className="row">
-                    <div className="col-md-6 mb-3">
-                      <Form.Label>Contraseña</Form.Label>
-                      {usuarioSeleccionado ? (
-                        // Si estamos editando, no mostrar el campo contraseña
-                        <Form.Control type="password" value="********" disabled style={{ background: '#f1f1f1', color: '#aaa' }} />
-                      ) : (
-                        <Form.Control
-                          type="password"
-                          name="contraseña"
-                          value={formData.contraseña || ''}
-                          onChange={handleChange}
-                          placeholder="Contraseña"
-                          autoComplete="new-password"
-                          size="lg"
-                          required
-                        />
-                      )}
-                    </div>
+                    {/* Solo mostrar campos de contraseña al crear */}
+                    {!usuarioSeleccionado && (
+                      <>
+                        <div className="col-md-6 mb-3">
+                          <Form.Label>Contraseña</Form.Label>
+                          <div style={{ position: 'relative' }}>
+                            <Form.Control
+                              type={verPass ? 'text' : 'password'}
+                              name="contraseña"
+                              value={formData.contraseña || ''}
+                              onChange={handleChange}
+                              placeholder="Contraseña"
+                              autoComplete="new-password"
+                              size="lg"
+                              required
+                              isInvalid={formData.contraseña && !passValida}
+                              style={{ paddingRight: '2.5rem' }}
+                            />
+                            <span
+                              onClick={() => setVerPass(v => !v)}
+                              style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#0a3871', fontSize: '1.15rem', zIndex: 2 }}
+                              title={verPass ? 'Ocultar contraseña' : 'Ver contraseña'}
+                            >
+                              {verPass ? <FaEyeSlash /> : <FaEye />}
+                            </span>
+                          </div>
+                          {formData.contraseña && !passValida && (
+                            <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                              La contraseña debe tener mínimo 8 caracteres, incluir mayúscula, minúscula, número y un carácter especial.
+                            </div>
+                          )}
+                        </div>
+                        <div className="col-md-6 mb-3">
+                          <Form.Label>Confirmar contraseña</Form.Label>
+                          <div style={{ position: 'relative' }}>
+                            <Form.Control
+                              type={verPass ? 'text' : 'password'}
+                              value={confirmPass}
+                              onChange={e => setConfirmPass(e.target.value)}
+                              placeholder="Confirmar contraseña"
+                              size="lg"
+                              isInvalid={confirmPass && !coinciden}
+                              style={{ paddingRight: '2.5rem' }}
+                            />
+                            <span
+                              onClick={() => setVerPass(v => !v)}
+                              style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#0a3871', fontSize: '1.15rem', zIndex: 2 }}
+                              title={verPass ? 'Ocultar contraseña' : 'Ver contraseña'}
+                            >
+                              {verPass ? <FaEyeSlash /> : <FaEye />}
+                            </span>
+                          </div>
+                          {confirmPass && !coinciden && (
+                            <div className="text-danger mt-1" style={{ fontSize: '0.95em' }}>
+                              Las contraseñas no coinciden.
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    {/* Campo de rol siempre visible */}
                     <div className="col-md-6 mb-3">
                       <Form.Label>Rol</Form.Label>
                       <Form.Select
@@ -480,7 +610,7 @@ const handleGuardar = async () => {
                 <Button variant="secondary" size="lg" onClick={() => setMostrarModal(false)}>
                   Cancelar
                 </Button>
-                <Button variant="primary" size="lg" type="submit">
+                <Button variant="primary" size="lg" type="submit" disabled={!docValido || !emailValido || !nombreValido || !apellidoValido || (!usuarioSeleccionado && (formData.contraseña && (!passValida || !coinciden)))}>
                   Guardar
                 </Button>
               </Modal.Footer>
@@ -490,36 +620,38 @@ const handleGuardar = async () => {
         {/* Modal Detalle Usuario */}
         {mostrarDetalle && usuarioDetalle && (
           <Modal show={mostrarDetalle} onHide={() => setMostrarDetalle(false)} centered>
-            <div style={{ background: '#0a3871', color: 'white', padding: '1.5rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTopLeftRadius: '0.7rem', borderTopRightRadius: '0.7rem' }}>
-              <div className="d-flex align-items-center gap-3">
-                <i className="fas fa-user-circle fa-2x me-2"></i>
-                <span style={{ fontWeight: 800, fontSize: '1.5rem', letterSpacing: '0.5px' }}>Detalle de Usuario</span>
-              </div>
-              <button type="button" className="btn-close btn-close-white" onClick={() => setMostrarDetalle(false)}></button>
+            <div style={{ background: '#0a3871', color: 'white', padding: '2.2rem 2.5rem 1.2rem 2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 24px #0a387133' }}>
+              <i className="fas fa-user-circle fa-3x mb-2"></i>
+              <div style={{ fontWeight: 800, fontSize: '1.5rem', letterSpacing: '0.5px', textAlign: 'center' }}>{usuarioDetalle.nombre} {usuarioDetalle.apellido}</div>
+              <div style={{ fontWeight: 400, fontSize: '1.1rem', opacity: 0.85, marginBottom: '-0.5rem' }}>Detalle de Usuario</div>
+              <button type="button" className="btn-close btn-close-white position-absolute end-0 mt-2 me-2" style={{ filter: 'brightness(0.9)' }} onClick={() => setMostrarDetalle(false)}></button>
             </div>
-            <Modal.Body style={{ padding: '2rem 2.5rem 1.5rem 2.5rem', background: '#f8fafc' }}>
+            <Modal.Body style={{ padding: '2rem 2.5rem 1.5rem 2.5rem', background: '#f8fafc', animation: 'fadeInDown 0.5s' }}>
               <div className="mb-3">
                 {[
-                  { label: 'ID', value: usuarioDetalle.id },
-                  { label: 'Documento', value: usuarioDetalle.documento },
-                  { label: 'Nombre', value: usuarioDetalle.nombre },
-                  { label: 'Apellido', value: usuarioDetalle.apellido },
-                  { label: 'Email', value: usuarioDetalle.email },
-                  { label: 'Estado', value: usuarioDetalle.estado ? <span className="badge bg-success px-3 py-2 fs-6" style={{fontWeight:600}}>Activo</span> : <span className="badge bg-secondary px-3 py-2 fs-6" style={{fontWeight:600}}>Inactivo</span> },
-                  { label: 'Rol', value: <span className="badge bg-info text-dark px-3 py-2 fs-6" style={{fontWeight:600}}>{usuarioDetalle.rol?.nombre || 'Sin rol'}</span> },
+                  { label: 'ID', value: usuarioDetalle.id, icon: 'fas fa-id-badge' },
+                  { label: 'Tipo de documento', value: tipoDocumentoNombre[usuarioDetalle.tipo_documento] || usuarioDetalle.tipo_documento, icon: 'fas fa-id-card' },
+                  { label: 'Documento', value: usuarioDetalle.documento, icon: 'fas fa-address-card' },
+                  { label: 'Nombre', value: usuarioDetalle.nombre, icon: 'fas fa-user' },
+                  { label: 'Apellido', value: usuarioDetalle.apellido, icon: 'fas fa-user' },
+                  { label: 'Email', value: usuarioDetalle.email, icon: 'fas fa-envelope' },
+                  { label: 'Estado', value: usuarioDetalle.estado ? <span className="badge bg-success px-3 py-2 fs-6" style={{fontWeight:600}}>Activo</span> : <span className="badge bg-secondary px-3 py-2 fs-6" style={{fontWeight:600}}>Inactivo</span>, icon: 'fas fa-toggle-on' },
+                  { label: 'Rol', value: <span className="badge bg-info text-dark px-3 py-2 fs-6" style={{fontWeight:600}}>{usuarioDetalle.rol?.nombre || 'Sin rol'}</span>, icon: 'fas fa-user-shield' },
                 ].map((item, idx, arr) => (
                   <div key={item.label} className="row align-items-center py-2" style={{ borderBottom: idx < arr.length - 1 ? '1px solid #e3e6ea' : 'none' }}>
-                    <div className="col-4 text-end pe-3" style={{ fontWeight: 700, color: '#0a3871', fontSize: '1.08rem' }}>{item.label}:</div>
+                    <div className="col-1 text-center" style={{ color: '#0a3871', fontSize: '1.2em' }}><i className={item.icon}></i></div>
+                    <div className="col-3 text-end pe-3" style={{ fontWeight: 700, color: '#0a3871', fontSize: '1.08rem' }}>{item.label}:</div>
                     <div className="col-8" style={{ fontSize: '1.08rem' }}>{item.value}</div>
                   </div>
                 ))}
               </div>
             </Modal.Body>
-            <Modal.Footer style={{ justifyContent: 'center', background: '#f8fafc', borderBottomLeftRadius: '0.7rem', borderBottomRightRadius: '0.7rem' }}>
-              <Button variant="secondary" size="lg" style={{ minWidth: 120, fontWeight: 600 }} onClick={() => setMostrarDetalle(false)}>
-                Cerrar
+            <Modal.Footer style={{ justifyContent: 'center', background: '#f8fafc', borderBottomLeftRadius: '0.9rem', borderBottomRightRadius: '0.9rem' }}>
+              <Button variant="secondary" size="lg" style={{ minWidth: 140, fontWeight: 600, fontSize: '1.15em' }} onClick={() => setMostrarDetalle(false)}>
+                <i className="fas fa-times me-2"></i>Cerrar
               </Button>
             </Modal.Footer>
+            <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: none; } }`}</style>
           </Modal>
         )}
       </div>

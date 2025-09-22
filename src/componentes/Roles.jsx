@@ -440,29 +440,38 @@ const RolesList = () => {
                   <div className="row">
                     <div className="col-md-12 mb-3">
                       <Form.Label>Agregar Permiso</Form.Label>
-                      <Form.Select onChange={handleAgregarPermiso} defaultValue="" size="lg">
-                        <option value="" disabled>-- Seleccione un permiso --</option>
-                        {permisosDisponibles.filter(permiso => !permisosSeleccionados.includes(permiso.id)).map(permiso => (
-                          <option key={permiso.id} value={permiso.id}>{permiso.nombre}</option>
-                        ))}
-                      </Form.Select>
+                      <div className="d-flex align-items-center gap-2" style={{ background: '#f4f8fb', borderRadius: '0.7em', padding: '0.7em 1em' }}>
+                        <span style={{ color: '#0a3871', fontSize: '1.3em', marginRight: 8 }}>
+                          <i className="fas fa-key"></i>
+                        </span>
+                        <Form.Select onChange={handleAgregarPermiso} defaultValue="" size="lg" style={{ maxWidth: 350, flex: 1 }}>
+                          <option value="" disabled>-- Seleccione un permiso --</option>
+                          {permisosDisponibles.filter(permiso => !permisosSeleccionados.includes(permiso.id)).map(permiso => (
+                            <option key={permiso.id} value={permiso.id}>{permiso.nombre}</option>
+                          ))}
+                        </Form.Select>
+                      </div>
                     </div>
                     <div className="col-md-12 mb-3">
                       <Form.Label>Permisos seleccionados</Form.Label>
-                      <div>
-                        {permisosSeleccionados.length === 0 && <p className="text-muted">No hay permisos agregados.</p>}
+                      <div style={{ minHeight: 48, background: '#f4f8fb', borderRadius: '0.7em', padding: '0.7em 1em', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {permisosSeleccionados.length === 0 && (
+                          <span className="text-muted d-flex align-items-center" style={{ fontSize: '1.05em' }}>
+                            <i className="fas fa-info-circle me-2"></i> No hay permisos agregados.
+                          </span>
+                        )}
                         {permisosSeleccionados.map(id => {
                           const permiso = permisosDisponibles.find(p => p.id === id);
                           if (!permiso) return null;
                           return (
                             <span
                               key={id}
-                              className="badge bg-primary me-2 mb-2"
-                              style={{ cursor: 'pointer', fontSize: '1rem', padding: '0.7em 1em' }}
+                              className="badge bg-primary me-2 mb-2 animate__animated animate__fadeIn"
+                              style={{ cursor: 'pointer', fontSize: '1.08em', padding: '0.7em 1.2em', display: 'flex', alignItems: 'center', borderRadius: '1.5em', boxShadow: '0 2px 8px #0a38711a' }}
                               onClick={() => handleQuitarPermiso(id)}
                               title="Click para quitar permiso"
                             >
-                              {permiso.nombre} &times;
+                              <i className="fas fa-shield-alt me-2"></i> {permiso.nombre} <span style={{ marginLeft: 8, fontWeight: 700, fontSize: '1.2em' }}>&times;</span>
                             </span>
                           );
                         })}

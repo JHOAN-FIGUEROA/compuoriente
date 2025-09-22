@@ -5,12 +5,15 @@ import {
   editarClase, 
   eliminarClase 
 } from '../api';
+import Select from 'react-select';
+import { getProfesores, getGrupos, getSalones } from '../api';
 import '../css/Institucional.css';
 
 const Clases = () => {
   const [clases, setClases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -23,12 +26,29 @@ const Clases = () => {
     dia_semana: '',
     hora_inicio: '',
     hora_fin: '',
-    salon: ''
+    salon_id: ''
   });
+  const [profesoresOptions, setProfesoresOptions] = useState([]);
+  const [gruposOptions, setGruposOptions] = useState([]);
+  const [salonesOptions, setSalonesOptions] = useState([]);
 
   useEffect(() => {
     cargarClases();
+    cargarProfesoresYGrupos();
+    cargarSalonesActivos();
   }, [pagina]);
+
+  const cargarSalonesActivos = async () => {
+    try {
+      const res = await getSalones('all');
+      setSalonesOptions(
+        (res.data.salones || res.data || []).map(s => ({
+          value: s.id,
+          label: s.nombre
+        }))
+      );
+    } catch (err) {}
+  };
 
   const cargarClases = async () => {
     try {
@@ -46,13 +66,41 @@ const Clases = () => {
     }
   };
 
+  const cargarProfesoresYGrupos = async () => {
+    try {
+      const profRes = await getProfesores(1, 1000);
+      const grupoRes = await getGrupos(1, 1000);
+      setProfesoresOptions(
+        (profRes.data.profesores || profRes.data || []).map(p => ({
+          value: p.id,
+          label: `${p.nombre} ${p.apellido} (ID: ${p.id}${p.documento ? ', Doc: ' + p.documento : ''})`
+        }))
+      );
+      setGruposOptions(
+        (grupoRes.data.grupos || grupoRes.data || []).map(g => ({
+          value: g.id,
+          label: `${g.nombre} (ID: ${g.id})`
+        }))
+      );
+    } catch (err) {}
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (!camposCompletos) {
+        setError('Por favor completa todos los campos obligatorios.');
+        return;
+      }
+      console.log('Datos enviados:', formData); // <-- Depuración
       if (editando) {
         await editarClase(editando.id, formData);
+        setError(null);
+        alert('Clase actualizada correctamente.');
       } else {
         await crearClase(formData);
+        setError(null);
+        alert('Clase creada correctamente.');
       }
       setMostrarFormulario(false);
       setEditando(null);
@@ -73,7 +121,7 @@ const Clases = () => {
       dia_semana: clase.dia_semana || '',
       hora_inicio: clase.hora_inicio || '',
       hora_fin: clase.hora_fin || '',
-      salon: clase.salon || ''
+      salon_id: clase.salon_id || clase.salon || ''
     });
     setMostrarFormulario(true);
   };
@@ -98,7 +146,7 @@ const Clases = () => {
       dia_semana: '',
       hora_inicio: '',
       hora_fin: '',
-      salon: ''
+      salon_id: ''
     });
   };
 
@@ -125,6 +173,8 @@ const Clases = () => {
   function getErrorMessage(error) {
     return error?.response?.data?.message || error?.message || 'Ocurrió un error';
   }
+
+  const camposCompletos = formData.nombre && formData.profesor_id && formData.grupo_id && formData.dia_semana && formData.hora_inicio && formData.hora_fin && formData.salon_id;
 
   return (
     <div className="institucional-container" style={{ paddingTop: 0, marginTop: 0 }}>
@@ -158,7 +208,7 @@ const Clases = () => {
                   />
                 </div>
               </div>
-              <button className="btn btn-primary btn-lg" onClick={abrirModalCrear}>
+              <button className="btn btn-primary btn-lg" onClick={handleNuevo}>
                 <i className="fas fa-plus me-2"></i>
                 Nueva Clase
               </button>
@@ -235,7 +285,7 @@ const Clases = () => {
                                 </span>
                               </td>
                               <td>
-                                <span className="badge bg-secondary">{clase.salon}</span>
+                                <span className="badge bg-secondary">{clase.salon?.nombre || '-'}</span>
                               </td>
                               <td>
                                 <span className="badge bg-success">Prof. #{clase.profesor_id}</span>
@@ -347,36 +397,39 @@ const Clases = () => {
                         />
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Salón</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={formData.salon}
-                          onChange={(e) => setFormData({...formData, salon: e.target.value})}
+                        <label className="form-label">Salón *</label>
+                        <Select
+                          options={salonesOptions}
+                          value={salonesOptions.find(opt => opt.value === formData.salon_id) || null}
+                          onChange={opt => setFormData({ ...formData, salon_id: opt ? opt.value : '' })}
+                          placeholder="Seleccionar salón..."
+                          isClearable
+                          isSearchable
+                          required
                         />
                       </div>
                     </div>
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Profesor ID *</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.profesor_id}
-                          onChange={(e) => setFormData({...formData, profesor_id: e.target.value})}
-                          required
-                          min="1"
+                        <label className="form-label">Profesor *</label>
+                        <Select
+                          options={profesoresOptions}
+                          value={profesoresOptions.find(opt => opt.value === formData.profesor_id) || null}
+                          onChange={opt => setFormData({ ...formData, profesor_id: opt ? opt.value : '' })}
+                          placeholder="Buscar por nombre, ID o documento..."
+                          isClearable
+                          isSearchable
                         />
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Grupo ID *</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.grupo_id}
-                          onChange={(e) => setFormData({...formData, grupo_id: e.target.value})}
-                          required
-                          min="1"
+                        <label className="form-label">Grupo *</label>
+                        <Select
+                          options={gruposOptions}
+                          value={gruposOptions.find(opt => opt.value === formData.grupo_id) || null}
+                          onChange={opt => setFormData({ ...formData, grupo_id: opt ? opt.value : '' })}
+                          placeholder="Buscar por nombre o ID..."
+                          isClearable
+                          isSearchable
                         />
                       </div>
                     </div>
@@ -440,7 +493,7 @@ const Clases = () => {
                     >
                       Cancelar
                     </button>
-                    <button type="submit" className="btn btn-primary">
+                    <button type="submit" className="btn btn-primary" disabled={!camposCompletos}>
                       <i className="fas fa-save me-2"></i>
                       {editando ? 'Actualizar' : 'Guardar'}
                     </button>

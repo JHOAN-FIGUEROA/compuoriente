@@ -1,0 +1,105 @@
+/* Variables de tema: mantenemos la paleta actual */
+:root {
+  --color-primary: #0077b6;
+  --color-primary-dark: #023e8a;
+  --color-primary-light: #00b4d8;
+  --color-accent: #caf0f8;
+  --color-danger: #ff6b6b;
+  --color-danger-dark: #fa5252;
+  --color-bg: #f8f9fb;
+  --color-text: #1f2937;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Afinar tarjetas y tablas para una apariencia más moderna */
+.card {
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.card .card-header {
+  background: white;
+  border-bottom: 1px solid #eceff4;
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+}
+
+.table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.table thead.table-dark {
+  background: var(--color-primary) !important;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-outline-primary {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn-outline-primary:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.badge.bg-success {
+  background-color: #2fb344 !important; /* leve ajuste para contraste */
+}
+.badge.bg-warning {
+  background-color: #f59f00 !important;
+  color: #1f2937 !important;
+}
+
+/* Modal simple (sin JS) para detalles */
+.app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.app-modal {
+  width: min(680px, 92vw);
+  background: #fff;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.app-modal header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #eceff4;
+}
+.app-modal .content {
+  padding: 1rem 1.25rem;
+}
+.app-modal footer {
+  padding: 0.75rem 1.25rem 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+}

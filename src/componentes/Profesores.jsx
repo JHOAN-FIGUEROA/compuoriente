@@ -24,9 +24,10 @@ const Profesores = () => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editando, setEditando] = useState(null);
   const [formData, setFormData] = useState({
+    tipoDocumento: '',
+    documento: '',
     nombre: '',
     apellido: '',
-    documento: '',
     email: '',
     especialidad: '',
     departamento: '',
@@ -76,9 +77,10 @@ const Profesores = () => {
   const handleEditar = (profesor) => {
     setEditando(profesor);
     setFormData({
+      tipoDocumento: profesor.tipoDocumento || '',
+      documento: profesor.documento || '',
       nombre: profesor.nombre || '',
       apellido: profesor.apellido || '',
-      documento: profesor.documento || '',
       email: profesor.email || '',
       especialidad: profesor.especialidad || '',
       departamento: profesor.departamento || '',
@@ -101,9 +103,10 @@ const Profesores = () => {
 
   const resetForm = () => {
     setFormData({
+      tipoDocumento: '',
+      documento: '',
       nombre: '',
       apellido: '',
-      documento: '',
       email: '',
       especialidad: '',
       departamento: '',
@@ -312,6 +315,34 @@ const Profesores = () => {
               <Modal.Body style={{ paddingTop: 0 }}>
                 <div className="row">
                   <div className="col-md-6 mb-3">
+                    <Form.Label>Tipo de documento *</Form.Label>
+                    <Form.Select
+                      value={formData.tipoDocumento}
+                      onChange={e => setFormData({ ...formData, tipoDocumento: e.target.value })}
+                      required
+                      size="lg"
+                    >
+                      <option value="">Seleccione tipo</option>
+                      <option value="CC">C.C.</option>
+                      <option value="TI">T.I.</option>
+                      <option value="CE">C.E.</option>
+                      <option value="Pasaporte">Pasaporte</option>
+                    </Form.Select>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <Form.Label>Documento *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.documento}
+                      onChange={e => setFormData({ ...formData, documento: e.target.value })}
+                      required
+                      autoComplete="off"
+                      size="lg"
+                    />
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="col-md-6 mb-3">
                     <Form.Label>Nombre *</Form.Label>
                     <Form.Control
                       type="text"
@@ -336,17 +367,6 @@ const Profesores = () => {
                 </div>
                 <div className="row">
                   <div className="col-md-6 mb-3">
-                    <Form.Label>Documento *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      value={formData.documento}
-                      onChange={e => setFormData({ ...formData, documento: e.target.value })}
-                      required
-                      autoComplete="off"
-                      size="lg"
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
                     <Form.Label>Email *</Form.Label>
                     <Form.Control
                       type="email"
@@ -357,8 +377,6 @@ const Profesores = () => {
                       size="lg"
                     />
                   </div>
-                </div>
-                <div className="row">
                   <div className="col-md-6 mb-3">
                     <Form.Label>Especialidad</Form.Label>
                     <Form.Control
@@ -369,6 +387,8 @@ const Profesores = () => {
                       size="lg"
                     />
                   </div>
+                </div>
+                <div className="row">
                   <div className="col-md-6 mb-3">
                     <Form.Label>Departamento</Form.Label>
                     <Form.Control
@@ -379,8 +399,6 @@ const Profesores = () => {
                       size="lg"
                     />
                   </div>
-                </div>
-                <div className="row">
                   <div className="col-md-6 mb-3">
                     <Form.Label>Teléfono</Form.Label>
                     <Form.Control

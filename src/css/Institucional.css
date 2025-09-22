@@ -226,4 +226,11 @@
   font-size: 4rem;
   margin-bottom: 1rem;
   opacity: 0.5;
+}
+
+/* Modales siempre por encima del navbar */
+.modal,
+.modal-backdrop,
+.fade.show.d-block {
+  z-index: 2000 !important;
 } 

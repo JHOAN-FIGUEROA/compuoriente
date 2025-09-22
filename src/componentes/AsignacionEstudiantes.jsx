@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   getAsignacionesEstudianteGrupo, 
   asignarEstudianteAGrupo, 
-  removerEstudianteDeGrupo 
+  removerEstudianteDeGrupo,
+  getEstudiantes,
+  getGrupos
 } from '../api';
 import '../css/Institucional.css';
+import Select from 'react-select';
+import Swal from 'sweetalert2';
 
 // Utilidad para extraer el mensaje del backend
 function getErrorMessage(error) {
@@ -15,14 +19,18 @@ const AsignacionEstudiantes = () => {
   const [asignaciones, setAsignaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [formData, setFormData] = useState({
     estudiante_id: '',
     grupo_id: ''
   });
+  const [estudiantesOptions, setEstudiantesOptions] = useState([]);
+  const [gruposOptions, setGruposOptions] = useState([]);
 
   useEffect(() => {
     cargarAsignaciones();
+    cargarEstudiantesYGrupos();
   }, []);
 
   const cargarAsignaciones = async () => {
@@ -40,6 +48,28 @@ const AsignacionEstudiantes = () => {
     }
   };
 
+  const cargarEstudiantesYGrupos = async () => {
+    try {
+      // Traer muchos estudiantes y grupos (puedes ajustar el límite si hay muchos)
+      const estRes = await getEstudiantes(1, 1000);
+      const grupoRes = await getGrupos(1, 1000);
+      setEstudiantesOptions(
+        (estRes.data.estudiantes || estRes.data || []).map(e => ({
+          value: e.id || e.documento,
+          label: `${e.nombre} ${e.apellido} (${e.documento})`
+        }))
+      );
+      setGruposOptions(
+        (grupoRes.data.grupos || grupoRes.data || []).map(g => ({
+          value: g.id,
+          label: `${g.nombre} (ID: ${g.id})`
+        }))
+      );
+    } catch (err) {
+      // Opcional: setError('No se pudieron cargar estudiantes o grupos');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -53,12 +83,22 @@ const AsignacionEstudiantes = () => {
   };
 
   const handleEliminar = async (estudiante_id, grupo_id) => {
-    if (window.confirm('¿Estás seguro de que quieres remover este estudiante del grupo?')) {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'Esta acción removerá el estudiante del grupo.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, remover',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (result.isConfirmed) {
       try {
         await removerEstudianteDeGrupo(estudiante_id, grupo_id);
+        Swal.fire('Removido', 'El estudiante fue removido del grupo con éxito', 'success');
         cargarAsignaciones();
-      } catch (err) {
-        setError(err.message);
+      } catch (error) {
+        Swal.fire('Error', getErrorMessage(error), 'error');
       }
     }
   };
@@ -107,7 +147,7 @@ const AsignacionEstudiantes = () => {
                   />
                 </div>
               </div>
-              <button className="btn btn-primary btn-lg" onClick={abrirModalCrear}>
+              <button className="btn btn-primary btn-lg" onClick={handleNuevo}>
                 <i className="fas fa-plus me-2"></i>
                 Nueva Asignación
               </button>
@@ -225,27 +265,25 @@ const AsignacionEstudiantes = () => {
                   <div className="modal-body">
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Estudiante ID *</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.estudiante_id}
-                          onChange={(e) => setFormData({...formData, estudiante_id: e.target.value})}
-                          required
-                          min="1"
-                          placeholder="Ingrese el ID del estudiante"
+                        <label className="form-label">Estudiante *</label>
+                        <Select
+                          options={estudiantesOptions}
+                          value={estudiantesOptions.find(opt => opt.value === formData.estudiante_id) || null}
+                          onChange={opt => setFormData({ ...formData, estudiante_id: opt ? opt.value : '' })}
+                          placeholder="Buscar por nombre o documento..."
+                          isClearable
+                          isSearchable
                         />
                       </div>
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Grupo ID *</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={formData.grupo_id}
-                          onChange={(e) => setFormData({...formData, grupo_id: e.target.value})}
-                          required
-                          min="1"
-                          placeholder="Ingrese el ID del grupo"
+                        <label className="form-label">Grupo *</label>
+                        <Select
+                          options={gruposOptions}
+                          value={gruposOptions.find(opt => opt.value === formData.grupo_id) || null}
+                          onChange={opt => setFormData({ ...formData, grupo_id: opt ? opt.value : '' })}
+                          placeholder="Buscar por nombre o ID..."
+                          isClearable
+                          isSearchable
                         />
                       </div>
                     </div>

@@ -4,10 +4,13 @@ import {
   crearEstudiante, 
   editarEstudiante, 
   eliminarEstudiante, 
-  buscarEstudiantes
+  buscarEstudiantes,
+  cambiarEstadoEstudiante
 } from '../api';
 import { useProgramas } from '../hooks/useProgramas';
 import '../css/Institucional.css';
+import { FaUserGraduate, FaIdCard, FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaCheckCircle, FaTimesCircle, FaBook, FaMapMarkerAlt } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 // Utilidad para extraer el mensaje del backend
 function getErrorMessage(error) {
@@ -38,9 +41,13 @@ const Estudiantes = () => {
     horario_programa: '',
     eps: '',
     observaciones: '',
-    rh: ''
+    rh: '',
+    programas: [], // Nuevo campo para múltiples programas
+    email: '',
   });
   const { programas } = useProgramas();
+  const [mostrarDetalle, setMostrarDetalle] = useState(false);
+  const [estudianteDetalle, setEstudianteDetalle] = useState(null);
 
   useEffect(() => {
     cargarEstudiantes();
@@ -100,19 +107,40 @@ const Estudiantes = () => {
       horario_programa: estudiante.horario_programa || '',
       eps: estudiante.eps || '',
       observaciones: estudiante.observaciones || '',
-      rh: estudiante.rh || ''
+      rh: estudiante.rh || '',
+      programas: estudiante.programas || [], // Asignar programas existentes
+      email: estudiante.email || '',
     });
     setMostrarFormulario(true);
   };
 
   const handleEliminar = async (documento) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este estudiante?')) {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: 'Esta acción eliminará el estudiante.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (result.isConfirmed) {
       try {
         await eliminarEstudiante(documento);
+        Swal.fire('Eliminado', 'Estudiante eliminado con éxito', 'success');
         cargarEstudiantes();
-      } catch (err) {
-        setError(err.message);
+      } catch (error) {
+        Swal.fire('Error', getErrorMessage(error), 'error');
       }
+    }
+  };
+
+  const handleToggleEstado = async (documento, estadoActual) => {
+    try {
+      await cambiarEstadoEstudiante(documento, !estadoActual);
+      cargarEstudiantes();
+    } catch (error) {
+      setError(getErrorMessage(error));
     }
   };
 
@@ -132,7 +160,9 @@ const Estudiantes = () => {
       horario_programa: '',
       eps: '',
       observaciones: '',
-      rh: ''
+      rh: '',
+      programas: [], // Resetear programas
+      email: '',
     });
   };
 
@@ -140,6 +170,18 @@ const Estudiantes = () => {
     setEditando(null);
     resetForm();
     setMostrarFormulario(true);
+  };
+
+  const handleVerDetalle = (estudiante) => {
+    setEstudianteDetalle(estudiante);
+    setMostrarDetalle(true);
+  };
+
+  const tipoDocumentoNombre = {
+    CC: 'Cédula de ciudadanía',
+    TI: 'Tarjeta de identidad',
+    CE: 'Cédula de extranjería',
+    PP: 'Pasaporte',
   };
 
   return (
@@ -212,13 +254,13 @@ const Estudiantes = () => {
                     <table className="table table-hover mb-0">
                       <thead className="table-light">
                         <tr>
+                          <th>#</th>
                           <th>Folio</th>
                           <th>Documento</th>
                           <th>Nombre Completo</th>
                           <th>Programa</th>
-                          <th>Departamento</th>
                           <th>Teléfono</th>
-                          <th>RH</th>
+                          <th>Estado</th>
                           <th className="text-center">Acciones</th>
                         </tr>
                       </thead>
@@ -231,8 +273,9 @@ const Estudiantes = () => {
                             </td>
                           </tr>
                         ) : (
-                          estudiantes.map((estudiante) => (
+                          estudiantes.map((estudiante, index) => (
                             <tr key={estudiante.documento}>
+                              <td>{(pagina - 1) * 10 + index + 1}</td>
                               <td>
                                 <span className="badge bg-secondary">{estudiante.numerofolio}</span>
                               </td>
@@ -253,15 +296,18 @@ const Estudiantes = () => {
                               <td>
                                 <span className="badge bg-info">{estudiante.programa}</span>
                               </td>
-                              <td>
-                                <div>
-                                  <strong>{estudiante.departamento}</strong><br/>
-                                  <small className="text-muted">{estudiante.Municipio}</small>
-                                </div>
-                              </td>
                               <td>{estudiante.telefono}</td>
-                              <td>
-                                <span className="badge bg-danger">{estudiante.rh}</span>
+                              <td className="text-center align-middle">
+                                <div className="form-check form-switch m-0 d-flex justify-content-center">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id={`switch-estudiante-${estudiante.documento}`}
+                                    checked={Boolean(estudiante.estado)}
+                                    onChange={() => handleToggleEstado(estudiante.documento, estudiante.estado)}
+                                  />
+                                  <label className="form-check-label" htmlFor={`switch-estudiante-${estudiante.documento}`}></label>
+                                </div>
                               </td>
                               <td className="text-center">
                                 <div className="btn-group" role="group">
@@ -273,6 +319,15 @@ const Estudiantes = () => {
                                     data-bs-placement="top"
                                   >
                                     <i className="fas fa-pen"></i>
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-info"
+                                    onClick={() => handleVerDetalle(estudiante)}
+                                    title="Ver Detalle"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                  >
+                                    <i className="fas fa-eye"></i>
                                   </button>
                                   <button
                                     className="btn btn-sm btn-outline-danger"
@@ -464,6 +519,18 @@ const Estudiantes = () => {
                         />
                       </div>
                     </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Email *</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        required
+                        maxLength="100"
+                        placeholder="Correo electrónico"
+                      />
+                    </div>
 
                     {/* Información Académica */}
                     <h6 className="text-primary mb-3 mt-4">
@@ -472,16 +539,20 @@ const Estudiantes = () => {
                     </h6>
                     <div className="row">
                       <div className="col-md-6 mb-3">
-                        <label className="form-label">Programa *</label>
+                        <label className="form-label">Programas *</label>
                         <select
                           className="form-select"
-                          value={formData.programa}
-                          onChange={(e) => setFormData({...formData, programa: e.target.value})}
+                          multiple
+                          value={formData.programas || []}
+                          onChange={e => {
+                            const options = Array.from(e.target.selectedOptions, option => option.value);
+                            setFormData({...formData, programas: options});
+                          }}
                           required
                         >
-                          <option value="">Seleccionar programa...</option>
+                          <option value="" disabled>Seleccionar programas...</option>
                           {programas.map((programa) => (
-                            <option key={programa.id} value={programa.nombre}>
+                            <option key={programa.id} value={programa.id}>
                               {programa.nombre}
                             </option>
                           ))}
@@ -618,6 +689,61 @@ const Estudiantes = () => {
           </div>
         )}
       </div>
+      {mostrarDetalle && estudianteDetalle && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div style={{ background: '#0a3871', color: 'white', padding: '2.2rem 2.5rem 1.2rem 2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 4px 24px #0a387133' }}>
+                <FaUserGraduate size={48} className="mb-2" />
+                <div style={{ fontWeight: 800, fontSize: '1.5rem', letterSpacing: '0.5px', textAlign: 'center' }}>{estudianteDetalle.nombre} {estudianteDetalle.apellido}</div>
+                <div style={{ fontWeight: 400, fontSize: '1.1rem', opacity: 0.85, marginBottom: '-0.5rem' }}>Detalle de Estudiante</div>
+                <button type="button" className="btn-close btn-close-white position-absolute end-0 mt-2 me-2" style={{ filter: 'brightness(0.9)' }} onClick={() => setMostrarDetalle(false)}></button>
+              </div>
+              <div className="modal-body" style={{ padding: '2rem 2.5rem 1.5rem 2.5rem', background: '#f8fafc', animation: 'fadeInDown 0.5s' }}>
+                <div className="mb-3">
+                  {[
+                    { label: 'Folio', value: estudianteDetalle.numerofolio, icon: <FaIdCard /> },
+                    { label: 'Tipo de documento', value: tipoDocumentoNombre[estudianteDetalle.tipo_documento] || estudianteDetalle.tipo_documento, icon: <FaIdCard /> },
+                    { label: 'Documento', value: estudianteDetalle.documento, icon: <FaIdCard /> },
+                    { label: 'Nombre', value: estudianteDetalle.nombre, icon: <FaUser /> },
+                    { label: 'Apellido', value: estudianteDetalle.apellido, icon: <FaUser /> },
+                    { label: 'Fecha de nacimiento', value: estudianteDetalle.fecha_nacimiento ? new Date(estudianteDetalle.fecha_nacimiento).toLocaleDateString() : '', icon: <FaCalendarAlt /> },
+                    { label: 'Programas', value: estudianteDetalle.programas && estudianteDetalle.programas.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {estudianteDetalle.programas.map(p => (
+                          <span key={p.id} className="badge bg-info text-dark px-3 py-2 fs-6" style={{fontWeight:600}}>{p.nombre}</span>
+                        ))}
+                      </div>
+                    ) : <span className="text-muted">Sin programas</span>, icon: <FaBook /> },
+                    { label: 'Teléfono', value: estudianteDetalle.telefono, icon: <FaPhone /> },
+                    { label: 'Email', value: estudianteDetalle.email, icon: <FaEnvelope /> },
+                    { label: 'Estado', value: estudianteDetalle.estado ? <span className="badge bg-success px-3 py-2 fs-6" style={{fontWeight:600}}>Activo</span> : <span className="badge bg-secondary px-3 py-2 fs-6" style={{fontWeight:600}}>Inactivo</span>, icon: estudianteDetalle.estado ? <FaCheckCircle /> : <FaTimesCircle /> },
+                    { label: 'Departamento', value: estudianteDetalle.departamento, icon: <FaMapMarkerAlt /> },
+                    { label: 'Municipio', value: estudianteDetalle.Municipio, icon: <FaMapMarkerAlt /> },
+                    { label: 'Dirección', value: estudianteDetalle.direccion, icon: <FaMapMarkerAlt /> },
+                    { label: 'Horario', value: estudianteDetalle.horario_programa, icon: <FaBook /> },
+                    { label: 'EPS', value: estudianteDetalle.eps, icon: <FaUser /> },
+                    { label: 'RH', value: <span className="badge bg-danger px-3 py-2 fs-6" style={{fontWeight:600}}>{estudianteDetalle.rh}</span>, icon: <FaIdCard /> },
+                    { label: 'Observaciones', value: estudianteDetalle.observaciones, icon: <FaUser /> },
+                  ].map((item, idx, arr) => (
+                    <div key={item.label} className="row align-items-center py-2" style={{ borderBottom: idx < arr.length - 1 ? '1px solid #e3e6ea' : 'none' }}>
+                      <div className="col-1 text-center" style={{ color: '#0a3871', fontSize: '1.2em' }}>{item.icon}</div>
+                      <div className="col-3 text-end pe-3" style={{ fontWeight: 700, color: '#0a3871', fontSize: '1.08rem' }}>{item.label}:</div>
+                      <div className="col-8" style={{ fontSize: '1.08rem' }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer" style={{ justifyContent: 'center', background: '#f8fafc', borderBottomLeftRadius: '0.9rem', borderBottomRightRadius: '0.9rem' }}>
+                <button className="btn btn-secondary btn-lg" style={{ minWidth: 140, fontWeight: 600, fontSize: '1.15em' }} onClick={() => setMostrarDetalle(false)}>
+                  <i className="fas fa-times me-2"></i>Cerrar
+                </button>
+              </div>
+              <style>{`@keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: none; } }`}</style>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

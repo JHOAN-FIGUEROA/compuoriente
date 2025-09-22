@@ -17,6 +17,7 @@ const Grupos = () => {
   const [grupos, setGrupos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -140,7 +141,7 @@ const Grupos = () => {
                   />
                 </div>
               </div>
-              <button className="btn btn-primary btn-lg" onClick={abrirModalCrear}>
+              <button className="btn btn-primary btn-lg" onClick={handleNuevo}>
                 <i className="fas fa-plus me-2"></i>
                 Nuevo Grupo
               </button>
